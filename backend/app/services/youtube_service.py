@@ -137,10 +137,20 @@ class YouTubeService:
         # Fetch Real Comments via YoutubeCommentDownloader
         real_comments: List[RawComment] = []
         try:
-            from youtube_comment_downloader import YoutubeCommentDownloader, SORT_BY_POPULAR
+            from youtube_comment_downloader import YoutubeCommentDownloader
             downloader = YoutubeCommentDownloader()
-            raw_gen = downloader.get_comments_from_url(full_url, sort_by=SORT_BY_POPULAR)
-            extracted = list(itertools.islice(raw_gen, max_comments))
+            
+            # Primary attempt: get_comments using video_id directly
+            try:
+                raw_gen = downloader.get_comments(video_id)
+                extracted = list(itertools.islice(raw_gen, max_comments))
+            except Exception:
+                extracted = []
+
+            # Secondary attempt: get_comments_from_url
+            if not extracted:
+                raw_gen = downloader.get_comments_from_url(full_url)
+                extracted = list(itertools.islice(raw_gen, max_comments))
 
             for idx, item in enumerate(extracted):
                 cid = item.get('cid') or f"{video_id}_c{idx+1}"
@@ -162,7 +172,8 @@ class YouTubeService:
                         )
                     )
             
-            logger.info(f"[Public Downloader] Extracted {len(real_comments)} REAL comments for '{real_title or video_id}'")
+            if real_comments:
+                logger.info(f"[Public Downloader] Extracted {len(real_comments)} REAL comments for '{real_title or video_id}'")
 
         except Exception as e:
             logger.warning(f"Public comment downloader error for {video_id}: {e}")
