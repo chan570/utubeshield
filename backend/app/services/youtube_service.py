@@ -7,6 +7,22 @@ from app.config import settings
 from app.models.schemas import VideoMetadata, RawComment
 from app.utils.logger import logger
 
+def parse_votes(vote_str) -> int:
+    """Safely converts YouTube vote strings like '270k', '1.2k', '5M' into integers."""
+    if not vote_str:
+        return 0
+    if isinstance(vote_str, int):
+        return vote_str
+    s = str(vote_str).strip().lower().replace(',', '')
+    try:
+        if 'k' in s:
+            return int(float(s.replace('k', '')) * 1000)
+        if 'm' in s:
+            return int(float(s.replace('m', '')) * 1000000)
+        return int(float(s))
+    except (ValueError, TypeError):
+        return 0
+
 class YouTubeService:
     """
     YouTube Integration Service.
@@ -131,7 +147,7 @@ class YouTubeService:
                 author = item.get('author') or 'YouTube Viewer'
                 photo = item.get('photo') or 'https://i.pravatar.cc/150'
                 text = item.get('text') or ''
-                votes = int(item.get('votes', 0) or 0)
+                votes = parse_votes(item.get('votes'))
                 time_str = item.get('time') or ''
 
                 if text.strip():
