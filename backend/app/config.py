@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # API Keys
     OPENAI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
-    YOUTUBE_API_KEY: Optional[str] = None
+    YOUTUBE_API_KEY: Optional[str] = "AIzaSyAkSW96eICkyyBGiuiNNXycjx4ewpSMaUA"
 
     # LLM Settings
     DEFAULT_LLM_PROVIDER: str = "openai" # "openai" or "gemini"
