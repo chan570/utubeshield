@@ -87,32 +87,43 @@ class YouTubeService:
                         view_count=int(stats.get('viewCount', 0)),
                         like_count=int(stats.get('likeCount', 0)),
                         comment_count=int(stats.get('commentCount', 0)),
+                        comments_disabled=False,
                         published_at=snippet.get('publishedAt', '')
                     )
 
-                    comments_res = youtube.commentThreads().list(
-                        part='snippet',
-                        videoId=video_id,
-                        maxResults=min(max_comments, 100),
-                        order='relevance'
-                    ).execute()
+                    try:
+                        comments_res = youtube.commentThreads().list(
+                            part='snippet',
+                            videoId=video_id,
+                            maxResults=min(max_comments, 100),
+                            order='relevance'
+                        ).execute()
 
-                    comments: List[RawComment] = []
-                    for c_item in comments_res.get('items', []):
-                        c_snippet = c_item['snippet']['topLevelComment']['snippet']
-                        comments.append(
-                            RawComment(
-                                id=c_item['id'],
-                                author=c_snippet.get('authorDisplayName', 'Anonymous'),
-                                author_profile_image=c_snippet.get('authorProfileImageUrl', ''),
-                                text=c_snippet.get('textDisplay', ''),
-                                like_count=int(c_snippet.get('likeCount', 0)),
-                                published_at=c_snippet.get('publishedAt', '')
+                        comments: List[RawComment] = []
+                        for c_item in comments_res.get('items', []):
+                            c_snippet = c_item['snippet']['topLevelComment']['snippet']
+                            comments.append(
+                                RawComment(
+                                    id=c_item['id'],
+                                    author=c_snippet.get('authorDisplayName', 'Anonymous'),
+                                    author_profile_image=c_snippet.get('authorProfileImageUrl', ''),
+                                    text=c_snippet.get('textDisplay', ''),
+                                    like_count=int(c_snippet.get('likeCount', 0)),
+                                    published_at=c_snippet.get('publishedAt', '')
+                                )
                             )
-                        )
 
-                    logger.info(f"[YouTube API v3] Fetched '{video_metadata.title}' with {len(comments)} comments.")
-                    return video_metadata, comments
+                        logger.info(f"[YouTube API v3] Fetched '{video_metadata.title}' with {len(comments)} comments.")
+                        return video_metadata, comments
+
+                    except Exception as comment_err:
+                        err_str = str(comment_err).lower()
+                        if 'disabled' in err_str or '403' in err_str or 'disabled' in str(video_res):
+                            logger.info(f"Comments are turned off for video '{video_metadata.title}' ({video_id})")
+                            video_metadata.comments_disabled = True
+                            video_metadata.comment_count = 0
+                            return video_metadata, []
+                        raise comment_err
 
             except Exception as e:
                 logger.warning(f"YouTube API v3 failed ({e}). Proceeding to API-less public fetch.")
@@ -136,6 +147,8 @@ class YouTubeService:
 
         # Fetch Real Comments via YoutubeCommentDownloader
         real_comments: List[RawComment] = []
+        is_disabled = False
+
         try:
             from youtube_comment_downloader import YoutubeCommentDownloader
             downloader = YoutubeCommentDownloader()
@@ -144,13 +157,20 @@ class YouTubeService:
             try:
                 raw_gen = downloader.get_comments(video_id)
                 extracted = list(itertools.islice(raw_gen, max_comments))
-            except Exception:
+            except Exception as downloader_err:
+                if 'disabled' in str(downloader_err).lower():
+                    is_disabled = True
                 extracted = []
 
             # Secondary attempt: get_comments_from_url
-            if not extracted:
-                raw_gen = downloader.get_comments_from_url(full_url)
-                extracted = list(itertools.islice(raw_gen, max_comments))
+            if not extracted and not is_disabled:
+                try:
+                    raw_gen = downloader.get_comments_from_url(full_url)
+                    extracted = list(itertools.islice(raw_gen, max_comments))
+                except Exception as downloader_err:
+                    if 'disabled' in str(downloader_err).lower():
+                        is_disabled = True
+                    extracted = []
 
             for idx, item in enumerate(extracted):
                 cid = item.get('cid') or f"{video_id}_c{idx+1}"
@@ -189,9 +209,25 @@ class YouTubeService:
                 view_count=len(real_comments) * 520,
                 like_count=sum(c.like_count for c in real_comments),
                 comment_count=len(real_comments),
+                comments_disabled=False,
                 published_at="Recently"
             )
             return video_metadata, real_comments
+
+        if is_disabled:
+            video_metadata = VideoMetadata(
+                id=video_id,
+                url=full_url,
+                title=real_title or f"YouTube Video ({video_id})",
+                channel_title=real_channel or "YouTube Creator",
+                thumbnail_url=real_thumbnail,
+                view_count=1000,
+                like_count=50,
+                comment_count=0,
+                comments_disabled=True,
+                published_at="Recently"
+            )
+            return video_metadata, []
 
         # --- Method 3: Dynamic Video-Specific Comment Dataset ---
         logger.info(f"Generating video-specific dynamic dataset for '{real_title or video_id}'")
@@ -220,6 +256,7 @@ class YouTubeService:
             view_count=124000,
             like_count=8500,
             comment_count=340,
+            comments_disabled=False,
             published_at="Recently"
         )
 

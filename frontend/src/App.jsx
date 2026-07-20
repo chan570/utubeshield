@@ -73,7 +73,7 @@ export default function App() {
             <KeywordCloud analytics={analytics} />
 
             {/* Filterable Comment Table */}
-            <CommentTable comments={comments} videoTitle={video?.title} />
+            <CommentTable comments={comments} videoTitle={video?.title} commentsDisabled={video?.comments_disabled} />
           </div>
         )}
       </main>

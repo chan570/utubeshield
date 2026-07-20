@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, ThumbsUp, MessageSquare, Calendar, ExternalLink, User } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, MessageSquareOff, Calendar, ExternalLink, User } from 'lucide-react';
 
 export default function VideoCard({ video }) {
   if (!video) return null;
@@ -64,10 +64,17 @@ export default function VideoCard({ video }) {
             <span><strong className="text-[#1a0f0b] font-black">{formatNumber(video.like_count)}</strong> Likes</span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100/90 border border-amber-300 shadow-sm">
-            <MessageSquare className="w-4 h-4 text-amber-900" />
-            <span><strong className="text-[#1a0f0b] font-black">{formatNumber(video.comment_count)}</strong> Comments</span>
-          </div>
+          {video.comments_disabled ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-100 border-2 border-rose-400 text-rose-950 font-black shadow-sm">
+              <MessageSquareOff className="w-4 h-4 text-rose-700" />
+              <span>Comments Turned Off</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100/90 border border-amber-300 shadow-sm">
+              <MessageSquare className="w-4 h-4 text-amber-900" />
+              <span><strong className="text-[#1a0f0b] font-black">{formatNumber(video.comment_count)}</strong> Comments</span>
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-300 text-gray-900 font-bold shadow-sm">
             <Calendar className="w-4 h-4 text-gray-700" />

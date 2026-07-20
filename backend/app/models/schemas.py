@@ -12,6 +12,7 @@ class VideoMetadata(BaseModel):
     view_count: int = 0
     like_count: int = 0
     comment_count: int = 0
+    comments_disabled: bool = False
     published_at: Optional[str] = ""
 
 class RawComment(BaseModel):

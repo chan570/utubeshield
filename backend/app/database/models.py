@@ -14,6 +14,7 @@ class VideoDB(Base):
     view_count = Column(Integer, default=0)
     like_count = Column(Integer, default=0)
     comment_count = Column(Integer, default=0)
+    comments_disabled = Column(Boolean, default=False)
     published_at = Column(String, nullable=True)
     analyzed_at = Column(DateTime, default=datetime.utcnow)
 
